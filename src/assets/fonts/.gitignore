@@ -1,0 +1,8 @@
+fc-subs.db
+db.json
+fontNameMap.json
+FontLoaderSub.exe
+
+*.ttf
+*.otf
+*.ttc
