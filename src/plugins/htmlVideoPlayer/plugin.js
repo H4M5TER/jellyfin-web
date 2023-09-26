@@ -36,7 +36,6 @@ import { PluginType } from '../../types/plugin.ts';
 import Events from '../../utils/events.ts';
 import { includesAny } from '../../utils/container.ts';
 import debounce from 'lodash-es/debounce';
-import fontNameMap from '../../assets/fonts/fontNameMap.json';
 
 /**
  * Returns resolved URL.
@@ -1303,38 +1302,43 @@ export class HtmlVideoPlayer {
                     });
                 });
             }
-        }).then(()=>{
-            return fetch(getTextTrackUrl(track, item)).then(res => res.text()).then(rawAssSubtitle => {
-                let isReachedStyleLine = false;
-                let formatIndex = null;
-                const result = new Set();
-                for (const lineRaw of rawAssSubtitle.split(/\r?\n/)) {
-                    const line = lineRaw.trim();
-                    if (!isReachedStyleLine) {
-                        if (line === '[V4+ Styles]') {
-                            isReachedStyleLine = true;
-                        }
-                    } else {
-                        if (line.startsWith('Format:')) { // Format Line
-                            formatIndex = line.slice('Format:'.length).split(',').findIndex(x => x.includes('Fontname'));
-                        } else if (line.startsWith('Style:')) { // Style Line
-                            const fontName = line.slice('Style:'.length).split(',')[formatIndex].trim();
-                            result.add(fontName);
-                        } else if (line.startsWith('[')) { // Style Block Ended
-                            break;
-                        }
+            return fetch(getTextTrackUrl(track, item)).then(res => res.text());
+        }).then((rawAssSubtitle)=>{
+            let isReachedStyleLine = false;
+            let formatIndex = null;
+            const result = new Set();
+            for (const lineRaw of rawAssSubtitle.split(/\r?\n/)) {
+                const line = lineRaw.trim();
+                if (!isReachedStyleLine) {
+                    if (line === '[V4+ Styles]') {
+                        isReachedStyleLine = true;
                     }
+                    continue;
                 }
-                return [...result];
-            });
-        }).then((fontList) => {
+                if (line.startsWith('Format:')) { // Format Line
+                    formatIndex = line.slice('Format:'.length).split(',').findIndex(x => x.includes('Fontname'));
+                }
+                if (line.startsWith('Style:')) { // Style Line
+                    const fontName = line.slice('Style:'.length).split(',')[formatIndex].trim();
+                    result.add(fontName);
+                }
+                if (line.startsWith('[')) { // Style Block Ended
+                    break;
+                }
+            }
+            return Promise.all([
+                [...result],
+                fetch(`${appRouter.baseUrl()}/assets/fonts/fontNameMap.json`).then(res => res.json())
+            ]);
+        }).then(([fontList, fontNameMap]) => {
             const fontHit = fontList.filter(f=>Object.keys(fontNameMap).includes(f));
             const fontDir = fontHit.map(f => `${appRouter.baseUrl()}/assets/fonts/${fontNameMap[f]}`);
             const fontMissing = fontList.filter(f=>!Object.keys(fontNameMap).includes(f));
             avaliableFonts.push(...fontDir);
             console.log('font loaded: ' + fontHit.join(', '));
-            if (fontMissing.length)
+            if (fontMissing.length) {
                 console.log('font not available: ' + fontMissing.join(', '));
+            }
             return Promise.all([
             // TODO: replace with `event-target-polyfill` once https://github.com/benlesh/event-target-polyfill/pull/12 or 11 is merged
                 import('event-target-polyfill'),
