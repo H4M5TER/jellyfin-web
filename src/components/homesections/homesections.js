@@ -69,11 +69,14 @@ export function loadSections(elem, apiClient, user, userSettings) {
                 promises.push(loadSection(elem, apiClient, user, userSettings, userViews, sections, i));
             }
 
-            return Promise.all(promises).then(function () {
-                return resume(elem, {
-                    refresh: true
+            return Promise.all(promises)
+                // Timeout for polyfilled CustomElements (webOS 1.2)
+                .then(() => new Promise((resolve) => setTimeout(resolve, 0)))
+                .then(() => {
+                    return resume(elem, {
+                        refresh: true
+                    });
                 });
-            });
         } else {
             let noLibDescription;
             if (user.Policy?.IsAdministrator) {
@@ -216,14 +219,12 @@ function getFetchLatestItemsFn(serverId, parentId, collectionType) {
             if (collectionType === 'music') {
                 limit = 30;
             }
+        } else if (collectionType === 'tvshows') {
+            limit = 5;
+        } else if (collectionType === 'music') {
+            limit = 9;
         } else {
-            if (collectionType === 'tvshows') {
-                limit = 5;
-            } else if (collectionType === 'music') {
-                limit = 9;
-            } else {
-                limit = 8;
-            }
+            limit = 8;
         }
 
         const options = {

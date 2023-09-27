@@ -1,6 +1,7 @@
 const path = require('path');
 const { CleanWebpackPlugin } = require('clean-webpack-plugin');
 const CopyPlugin = require('copy-webpack-plugin');
+const ForkTsCheckerWebpackPlugin = require('fork-ts-checker-webpack-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const { DefinePlugin } = require('webpack');
@@ -46,6 +47,7 @@ const config = {
     },
     plugins: [
         new DefinePlugin({
+            __USE_SYSTEM_FONTS__: JSON.stringify(!!process.env.USE_SYSTEM_FONTS),
             __WEBPACK_SERVE__: JSON.stringify(!!process.env.WEBPACK_SERVE)
         }),
         new CleanWebpackPlugin(),
@@ -100,6 +102,11 @@ const config = {
                     to: path.resolve(__dirname, './dist')
                 };
             })
+        }),
+        new ForkTsCheckerWebpackPlugin({
+            typescript: {
+                configFile: path.resolve(__dirname, 'tsconfig.json')
+            }
         })
     ],
     output: {
@@ -110,6 +117,8 @@ const config = {
     },
     optimization: {
         runtimeChunk: 'single',
+        removeAvailableModules: false,
+        removeEmptyChunks: false,
         splitChunks: {
             chunks: 'all',
             maxInitialRequests: Infinity,
@@ -171,16 +180,19 @@ const config = {
                     path.resolve(__dirname, 'node_modules/@react-hook/passive-layout-effect'),
                     path.resolve(__dirname, 'node_modules/@react-hook/resize-observer'),
                     path.resolve(__dirname, 'node_modules/@remix-run/router'),
+                    path.resolve(__dirname, 'node_modules/@tanstack/match-sorter-utils'),
                     path.resolve(__dirname, 'node_modules/@tanstack/query-core'),
                     path.resolve(__dirname, 'node_modules/@tanstack/react-query'),
                     path.resolve(__dirname, 'node_modules/@uupaa/dynamic-import-polyfill'),
                     path.resolve(__dirname, 'node_modules/axios'),
                     path.resolve(__dirname, 'node_modules/blurhash'),
                     path.resolve(__dirname, 'node_modules/compare-versions'),
+                    path.resolve(__dirname, 'node_modules/copy-anything'),
                     path.resolve(__dirname, 'node_modules/date-fns'),
                     path.resolve(__dirname, 'node_modules/dom7'),
                     path.resolve(__dirname, 'node_modules/epubjs'),
                     path.resolve(__dirname, 'node_modules/flv.js'),
+                    path.resolve(__dirname, 'node_modules/is-what'),
                     path.resolve(__dirname, 'node_modules/libarchive.js'),
                     path.resolve(__dirname, 'node_modules/marked'),
                     path.resolve(__dirname, 'node_modules/react-router'),
@@ -216,14 +228,22 @@ const config = {
                 exclude: /node_modules/,
                 use: [
                     'worker-loader',
-                    'ts-loader'
+                    {
+                        loader: 'ts-loader',
+                        options: {
+                            transpileOnly: true
+                        }
+                    }
                 ]
             },
             {
                 test: /\.(ts|tsx)$/,
                 exclude: /node_modules/,
                 use: [{
-                    loader: 'ts-loader'
+                    loader: 'ts-loader',
+                    options: {
+                        transpileOnly: true
+                    }
                 }]
             },
             /* modules that Babel breaks when transforming to ESM */

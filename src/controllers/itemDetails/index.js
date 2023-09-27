@@ -36,6 +36,7 @@ import Dashboard from '../../utils/dashboard';
 import ServerConnections from '../../components/ServerConnections';
 import confirm from '../../components/confirm/confirm';
 import { download } from '../../scripts/fileDownloader';
+import { getItemBackdropImageUrl } from '../../utils/jellyfin-apiclient/backdropImage';
 
 function autoFocus(container) {
     import('../../components/autoFocuser').then(({ default: autoFocuser }) => {
@@ -501,34 +502,12 @@ function renderDetailPageBackdrop(page, item, apiClient) {
         return false;
     }
 
-    let imgUrl;
     let hasbackdrop = false;
     const itemBackdropElement = page.querySelector('#itemBackdrop');
 
-    if (item.BackdropImageTags?.length) {
-        imgUrl = apiClient.getScaledImageUrl(item.Id, {
-            type: 'Backdrop',
-            maxWidth: dom.getScreenWidth(),
-            index: 0,
-            tag: item.BackdropImageTags[0]
-        });
-        imageLoader.lazyImage(itemBackdropElement, imgUrl);
-        hasbackdrop = true;
-    } else if (item.ParentBackdropItemId && item.ParentBackdropImageTags && item.ParentBackdropImageTags.length) {
-        imgUrl = apiClient.getScaledImageUrl(item.ParentBackdropItemId, {
-            type: 'Backdrop',
-            maxWidth: dom.getScreenWidth(),
-            index: 0,
-            tag: item.ParentBackdropImageTags[0]
-        });
-        imageLoader.lazyImage(itemBackdropElement, imgUrl);
-        hasbackdrop = true;
-    } else if (item.ImageTags?.Primary) {
-        imgUrl = apiClient.getScaledImageUrl(item.Id, {
-            type: 'Primary',
-            maxWidth: dom.getScreenWidth(),
-            tag: item.ImageTags.Primary
-        });
+    const imgUrl = getItemBackdropImageUrl(apiClient, item, { maxWitdh: dom.getScreenWidth() }, false);
+
+    if (imgUrl) {
         imageLoader.lazyImage(itemBackdropElement, imgUrl);
         hasbackdrop = true;
     } else {
@@ -844,6 +823,7 @@ function setInitialCollapsibleState(page, item, apiClient, context, user) {
     }
 
     renderCast(page, item);
+    renderGuestCast(page, item);
 
     if (item.PartCount && item.PartCount > 1) {
         page.querySelector('#additionalPartsCollapsible').classList.remove('hide');
@@ -1826,11 +1806,34 @@ function renderCast(page, item) {
     });
 }
 
+function renderGuestCast(page, item) {
+    const people = (item.People || []).filter(p => p.Type === 'GuestStar');
+
+    if (!people.length) {
+        page.querySelector('#guestCastCollapsible').classList.add('hide');
+        return;
+    }
+
+    page.querySelector('#guestCastCollapsible').classList.remove('hide');
+    const guestCastContent = page.querySelector('#guestCastContent');
+
+    import('../../components/cardbuilder/peoplecardbuilder').then(({ default: peoplecardbuilder }) => {
+        peoplecardbuilder.buildPeopleCards(people, {
+            itemsContainer: guestCastContent,
+            coverImage: true,
+            serverId: item.ServerId,
+            shape: 'overflowPortrait',
+            imageBlurhashes: item.ImageBlurHashes
+        });
+    });
+}
+
 function ItemDetailPage() {
     const self = this;
     self.setInitialCollapsibleState = setInitialCollapsibleState;
     self.renderDetails = renderDetails;
     self.renderCast = renderCast;
+    self.renderGuestCast = renderGuestCast;
 }
 
 function bindAll(view, selector, eventName, fn) {

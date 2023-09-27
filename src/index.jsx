@@ -32,6 +32,7 @@ import './components/playback/playerSelectionMenu';
 import './legacy/domParserTextHtml';
 import './legacy/focusPreventScroll';
 import './legacy/htmlMediaElement';
+import './legacy/keyboardEvent';
 import './legacy/vendorStyles';
 import { currentSettings } from './scripts/settings/userSettings';
 import taskButton from './scripts/taskbutton';
@@ -92,9 +93,13 @@ function onGlobalizeInit() {
     if (browser.tv && !browser.android) {
         console.debug('using system fonts with explicit sizes');
         import('./styles/fonts.sized.scss');
+    } else if (__USE_SYSTEM_FONTS__) { // eslint-disable-line no-undef
+        console.debug('using system fonts');
+        import('./styles/fonts.scss');
     } else {
         console.debug('using default fonts');
         import('./styles/fonts.scss');
+        import('./styles/fonts.noto.scss');
     }
 
     import('./styles/librarybrowser.scss');
@@ -227,10 +232,8 @@ async function onAppReady() {
                     document.body.appendChild(localStyle);
                 }
                 localStyle.textContent = localCss;
-            } else {
-                if (localStyle) {
-                    localStyle.textContent = '';
-                }
+            } else if (localStyle) {
+                localStyle.textContent = '';
             }
         };
 
